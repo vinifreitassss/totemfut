@@ -1,3 +1,8 @@
-from .generator import GeneratedTotem, TotemConfig, generate_totem_svg, safe_filename
+from .v2 import GeneratedTotem, TotemConfig, generate_totem_svg, safe_filename
 
-__all__ = ["GeneratedTotem", "TotemConfig", "generate_totem_svg", "safe_filename"]
+__all__ = [
+    "GeneratedTotem",
+    "TotemConfig",
+    "generate_totem_svg",
+    "safe_filename",
+]
