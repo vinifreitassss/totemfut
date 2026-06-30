@@ -21,13 +21,13 @@ class TotemConfig:
     base_depth_mm: float = 50.0
     tab_width_mm: float = 48.0
     tab_height_mm: float = 12.0
-    max_name_width_mm: float = 58.0
-    max_number_width_mm: float = 50.0
-    desired_name_height_mm: float = 13.0
-    desired_compound_line_height_mm: float = 10.5
-    desired_number_height_mm: float = 40.0
-    min_name_height_mm: float = 7.0
-    min_number_height_mm: float = 28.0
+    max_name_width_mm: float = 48.0
+    max_number_width_mm: float = 42.0
+    desired_name_height_mm: float = 10.5
+    desired_compound_line_height_mm: float = 8.8
+    desired_number_height_mm: float = 35.0
+    min_name_height_mm: float = 6.5
+    min_number_height_mm: float = 25.0
     min_bridge_mm: float = 0.45
     max_bridge_mm: float = 1.25
     char_gap_units: float = 0.8
@@ -128,57 +128,61 @@ def _render_text(text: str, x: float, y: float, height: float, cfg: TotemConfig,
 
 
 def _player_outline_d(cfg: TotemConfig) -> str:
-    s = cfg.visible_height_mm / 200.0
-    tab_h = cfg.tab_height_mm / s
-    tab_w = cfg.tab_width_mm / s
+    tab_h = cfg.tab_height_mm
+    tab_w = cfg.tab_width_mm
     tab_left = 70.0 - tab_w / 2.0
     tab_right = 70.0 + tab_w / 2.0
     tab_bottom = 204.0 + tab_h
+
     d = f"""
-    M 70 5
-    C 58 5 51 15 52 29
-    C 53 40 59 48 64 51
-    L 54 55
-    C 47 58 43 66 39 77
-    L 29 69
-    C 24 65 18 68 17 74
-    L 8 96
-    C 5 104 10 111 19 111
-    L 33 111
-    C 39 111 42 106 40 100
-    L 38 91
-    L 45 78
-    L 47 118
-    C 47 127 44 136 41 145
-    L 35 166
-    L 31 185
-    L 19 195
-    C 13 200 17 207 25 207
-    L 49 207
-    L {tab_left:.3f} 207
+    M 70 4
+    C 58 4 53 15 55 30
+    C 56 42 62 49 66 52
+    L 58 55
+    C 48 58 40 67 36 79
+    L 24 68
+    C 18 63 10 66 7 74
+    L 3 88
+    C 0 96 7 101 14 97
+    L 22 92
+    L 29 103
+    C 34 111 44 109 48 101
+    L 52 88
+    L 52 122
+    L 44 149
+    L 38 181
+    L 25 191
+    C 17 197 21 206 31 206
+    L 50 206
+    C 56 206 59 203 59 198
+    L 64 162
+    L 67 139
+    L {tab_left:.3f} 204
     L {tab_left:.3f} {tab_bottom:.3f}
     L {tab_right:.3f} {tab_bottom:.3f}
-    L {tab_right:.3f} 207
-    L 91 207
-    L 115 207
-    C 123 207 127 200 121 195
-    L 109 185
-    L 105 166
-    L 99 145
-    C 96 136 93 127 93 118
-    L 95 78
-    L 102 91
-    L 100 100
-    C 98 106 101 111 107 111
-    L 121 111
-    C 130 111 135 104 132 96
-    L 123 74
-    C 122 68 116 65 111 69
-    L 101 77
-    C 97 66 93 58 86 55
-    L 76 51
-    C 81 48 87 40 88 29
-    C 89 15 82 5 70 5
+    L {tab_right:.3f} 204
+    L 73 139
+    L 76 162
+    L 81 198
+    C 81 203 84 206 90 206
+    L 109 206
+    C 119 206 123 197 115 191
+    L 102 181
+    L 96 149
+    L 88 122
+    L 88 88
+    L 92 101
+    C 96 109 106 111 111 103
+    L 118 92
+    L 126 97
+    C 133 101 140 96 137 88
+    L 133 74
+    C 130 66 122 63 116 68
+    L 104 79
+    C 100 67 92 58 82 55
+    L 74 52
+    C 78 49 84 42 85 30
+    C 87 15 82 4 70 4
     Z
     """
     return " ".join(d.split())
@@ -209,12 +213,22 @@ def _ball(cx: float, cy: float, r: float, klass: str) -> list[str]:
     ]
 
 
-def _shirt_guides(x_offset: float, y_offset: float, s: float) -> list[str]:
-    cx = x_offset + 70.0 * s
-    return [
-        f'<path class="engrave" d="M {base.fmt(x_offset + 48*s)} {base.fmt(y_offset + 63*s)} C {base.fmt(cx-14*s)} {base.fmt(y_offset + 72*s)} {base.fmt(cx+14*s)} {base.fmt(y_offset + 72*s)} {base.fmt(x_offset + 92*s)} {base.fmt(y_offset + 63*s)}" />',
-        f'<path class="engrave" d="M {base.fmt(x_offset + 47*s)} {base.fmt(y_offset + 118*s)} C {base.fmt(cx-7*s)} {base.fmt(y_offset + 126*s)} {base.fmt(cx+7*s)} {base.fmt(y_offset + 126*s)} {base.fmt(x_offset + 93*s)} {base.fmt(y_offset + 118*s)}" />',
-    ]
+def _leg_gap(cx: float, y: float, s: float, klass: str) -> str:
+    d = f"""
+    M {base.fmt(cx - 4.6*s)} {base.fmt(y + 135*s)}
+    C {base.fmt(cx - 7.0*s)} {base.fmt(y + 153*s)} {base.fmt(cx - 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx - 5.2*s)} {base.fmt(y + 194*s)}
+    C {base.fmt(cx - 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 5.2*s)} {base.fmt(y + 194*s)}
+    C {base.fmt(cx + 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx + 7.0*s)} {base.fmt(y + 153*s)} {base.fmt(cx + 4.6*s)} {base.fmt(y + 135*s)}
+    Z
+    """
+    return f'<path class="{klass}" d="{" ".join(d.split())}" />'
+
+
+def _shorts_line(x_offset: float, y_offset: float, s: float) -> str:
+    x1 = x_offset + 52.0 * s
+    x2 = x_offset + 88.0 * s
+    y = y_offset + 122.0 * s
+    return f'<path class="engrave" d="M {base.fmt(x1)} {base.fmt(y)} C {base.fmt(x1 + 10*s)} {base.fmt(y + 5*s)} {base.fmt(x2 - 10*s)} {base.fmt(y + 5*s)} {base.fmt(x2)} {base.fmt(y)}" />'
 
 
 def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -> GeneratedTotem:
@@ -244,22 +258,24 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
     x_offset = (svg_w - player_w) / 2.0
     y_offset = 0.0
     torso_x = x_offset + 70.0 * s
-    name_y = y_offset + (68.0 if len(layout.lines) == 2 else 72.0) * s
+    name_y = y_offset + (70.0 if len(layout.lines) == 2 else 74.0) * s
     number_y = y_offset + 92.0 * s
 
-    cut_text = ['<g id="CORTE_INTERNO_TEXTO">']
-    preview_text = ['<g id="PREVIEW_TEXTO">']
+    cut_internal = ['<g id="CORTE_INTERNO_TEXTO_E_DETALHES">']
+    preview_holes = ['<g id="PREVIEW_FUROS">']
     y = name_y
     for line in layout.lines:
-        cut_text.extend(_render_text(line, torso_x, y, layout.line_height_mm, cfg, "cut-internal", renderer))
-        preview_text.extend(_render_text(line, torso_x, y, layout.line_height_mm, cfg, "preview-hole", renderer))
+        cut_internal.extend(_render_text(line, torso_x, y, layout.line_height_mm, cfg, "cut-internal", renderer))
+        preview_holes.extend(_render_text(line, torso_x, y, layout.line_height_mm, cfg, "preview-hole", renderer))
         y += layout.line_height_mm + 2.0
-    cut_text.extend(_render_text(number, torso_x, number_y, number_height, cfg, "cut-internal", renderer))
-    preview_text.extend(_render_text(number, torso_x, number_y, number_height, cfg, "preview-hole", renderer))
-    cut_text.extend(_ball(torso_x, y_offset + 188.0 * s, 9.0 * s, "cut-internal"))
-    preview_text.extend(_ball(torso_x, y_offset + 188.0 * s, 9.0 * s, "preview-hole"))
-    cut_text.append("</g>")
-    preview_text.append("</g>")
+    cut_internal.extend(_render_text(number, torso_x, number_y, number_height, cfg, "cut-internal", renderer))
+    preview_holes.extend(_render_text(number, torso_x, number_y, number_height, cfg, "preview-hole", renderer))
+    cut_internal.append(_leg_gap(torso_x, y_offset, s, "cut-internal"))
+    preview_holes.append(_leg_gap(torso_x, y_offset, s, "preview-hole"))
+    cut_internal.extend(_ball(torso_x, y_offset + 188.0 * s, 8.5 * s, "cut-internal"))
+    preview_holes.extend(_ball(torso_x, y_offset + 188.0 * s, 8.5 * s, "preview-hole"))
+    cut_internal.append("</g>")
+    preview_holes.append("</g>")
 
     base_cut: list[str] = []
     base_preview: list[str] = []
@@ -274,7 +290,7 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
         '<g id="PREVIEW_PRODUTO">',
         f'<path class="preview-fill" d="{player_d}" transform="translate({base.fmt(x_offset)} {base.fmt(y_offset)}) scale({base.fmt(s)})" />',
         *base_preview,
-        *preview_text,
+        *preview_holes,
         "</g>",
     ] if cfg.include_preview else []
 
@@ -306,8 +322,8 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
 {metadata}
   {''.join(preview)}
   <g id="CORTE_CORPO" transform="translate({base.fmt(x_offset)} {base.fmt(y_offset)}) scale({base.fmt(s)})"><path class="cut-external" d="{player_d}" /></g>
-  <g id="GRAVACAO_OPCIONAL">{''.join(_shirt_guides(x_offset, y_offset, s))}</g>
-  {''.join(cut_text)}
+  <g id="GRAVACAO_OPCIONAL">{_shorts_line(x_offset, y_offset, s)}</g>
+  {''.join(cut_internal)}
   {''.join(base_cut)}
 </svg>
 """
