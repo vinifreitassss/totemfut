@@ -21,13 +21,13 @@ class TotemConfig:
     base_depth_mm: float = 50.0
     tab_width_mm: float = 48.0
     tab_height_mm: float = 12.0
-    max_name_width_mm: float = 48.0
-    max_number_width_mm: float = 42.0
-    desired_name_height_mm: float = 10.5
-    desired_compound_line_height_mm: float = 8.8
-    desired_number_height_mm: float = 35.0
-    min_name_height_mm: float = 6.5
-    min_number_height_mm: float = 25.0
+    max_name_width_mm: float = 44.0
+    max_number_width_mm: float = 38.0
+    desired_name_height_mm: float = 9.8
+    desired_compound_line_height_mm: float = 8.2
+    desired_number_height_mm: float = 31.0
+    min_name_height_mm: float = 6.2
+    min_number_height_mm: float = 24.0
     min_bridge_mm: float = 0.45
     max_bridge_mm: float = 1.25
     char_gap_units: float = 0.8
@@ -138,49 +138,47 @@ def _player_outline_d(cfg: TotemConfig) -> str:
     M 70 4
     C 58 4 53 15 55 30
     C 56 42 62 49 66 52
-    L 58 55
-    C 48 58 40 67 36 79
-    L 24 68
-    C 18 63 10 66 7 74
-    L 3 88
-    C 0 96 7 101 14 97
-    L 22 92
-    L 29 103
-    C 34 111 44 109 48 101
-    L 52 88
-    L 52 122
-    L 44 149
-    L 38 181
-    L 25 191
-    C 17 197 21 206 31 206
-    L 50 206
-    C 56 206 59 203 59 198
-    L 64 162
-    L 67 139
+    C 67 54 67 56 64 57
+    C 51 60 42 68 36 82
+    L 29 74
+    C 23 67 16 67 11 74
+    C 6 82 3 93 3 101
+    C 3 109 11 114 18 109
+    L 29 101
+    C 36 112 45 111 51 99
+    L 53 91
+    L 52 123
+    L 43 151
+    L 37 181
+    L 25 190
+    C 16 197 21 206 32 206
+    L 48 206
+    C 55 206 58 202 59 196
+    L 64 163
+    L 67 140
     L {tab_left:.3f} 204
     L {tab_left:.3f} {tab_bottom:.3f}
     L {tab_right:.3f} {tab_bottom:.3f}
     L {tab_right:.3f} 204
-    L 73 139
-    L 76 162
-    L 81 198
-    C 81 203 84 206 90 206
-    L 109 206
-    C 119 206 123 197 115 191
-    L 102 181
-    L 96 149
-    L 88 122
-    L 88 88
-    L 92 101
-    C 96 109 106 111 111 103
-    L 118 92
-    L 126 97
-    C 133 101 140 96 137 88
-    L 133 74
-    C 130 66 122 63 116 68
-    L 104 79
-    C 100 67 92 58 82 55
-    L 74 52
+    L 73 140
+    L 76 163
+    L 81 196
+    C 82 202 85 206 92 206
+    L 108 206
+    C 119 206 124 197 115 190
+    L 103 181
+    L 97 151
+    L 88 123
+    L 87 91
+    L 89 99
+    C 95 111 104 112 111 101
+    L 122 109
+    C 129 114 137 109 137 101
+    C 137 93 134 82 129 74
+    C 124 67 117 67 111 74
+    L 104 82
+    C 98 68 89 60 76 57
+    C 73 56 73 54 74 52
     C 78 49 84 42 85 30
     C 87 15 82 4 70 4
     Z
@@ -208,27 +206,20 @@ def _ball(cx: float, cy: float, r: float, klass: str) -> list[str]:
         (cx + r * 0.38, cy + r * 0.32, r * 0.14),
     ]
     return [
-        f'<circle class="engrave" cx="{base.fmt(cx)}" cy="{base.fmt(cy)}" r="{base.fmt(r)}" />',
-        *[f'<circle class="{klass}" cx="{base.fmt(x)}" cy="{base.fmt(y)}" r="{base.fmt(hr)}" />' for x, y, hr in holes],
+        f'<circle class="{klass}" cx="{base.fmt(x)}" cy="{base.fmt(y)}" r="{base.fmt(hr)}" />'
+        for x, y, hr in holes
     ]
 
 
 def _leg_gap(cx: float, y: float, s: float, klass: str) -> str:
     d = f"""
-    M {base.fmt(cx - 4.6*s)} {base.fmt(y + 135*s)}
-    C {base.fmt(cx - 7.0*s)} {base.fmt(y + 153*s)} {base.fmt(cx - 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx - 5.2*s)} {base.fmt(y + 194*s)}
-    C {base.fmt(cx - 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 5.2*s)} {base.fmt(y + 194*s)}
-    C {base.fmt(cx + 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx + 7.0*s)} {base.fmt(y + 153*s)} {base.fmt(cx + 4.6*s)} {base.fmt(y + 135*s)}
+    M {base.fmt(cx - 4.6*s)} {base.fmt(y + 136*s)}
+    C {base.fmt(cx - 7.0*s)} {base.fmt(y + 154*s)} {base.fmt(cx - 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx - 5.0*s)} {base.fmt(y + 194*s)}
+    C {base.fmt(cx - 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 5.0*s)} {base.fmt(y + 194*s)}
+    C {base.fmt(cx + 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx + 7.0*s)} {base.fmt(y + 154*s)} {base.fmt(cx + 4.6*s)} {base.fmt(y + 136*s)}
     Z
     """
     return f'<path class="{klass}" d="{" ".join(d.split())}" />'
-
-
-def _shorts_line(x_offset: float, y_offset: float, s: float) -> str:
-    x1 = x_offset + 52.0 * s
-    x2 = x_offset + 88.0 * s
-    y = y_offset + 122.0 * s
-    return f'<path class="engrave" d="M {base.fmt(x1)} {base.fmt(y)} C {base.fmt(x1 + 10*s)} {base.fmt(y + 5*s)} {base.fmt(x2 - 10*s)} {base.fmt(y + 5*s)} {base.fmt(x2)} {base.fmt(y)}" />'
 
 
 def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -> GeneratedTotem:
@@ -259,7 +250,7 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
     y_offset = 0.0
     torso_x = x_offset + 70.0 * s
     name_y = y_offset + (70.0 if len(layout.lines) == 2 else 74.0) * s
-    number_y = y_offset + 92.0 * s
+    number_y = y_offset + 94.0 * s
 
     cut_internal = ['<g id="CORTE_INTERNO_TEXTO_E_DETALHES">']
     preview_holes = ['<g id="PREVIEW_FUROS">']
@@ -298,7 +289,6 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
     <style>
       .cut-external { fill: none; stroke: #ff0000; stroke-width: 0.12; vector-effect: non-scaling-stroke; }
       .cut-internal { fill: none; stroke: #0000ff; stroke-width: 0.12; vector-effect: non-scaling-stroke; }
-      .engrave { fill: none; stroke: #00aa00; stroke-width: 0.12; vector-effect: non-scaling-stroke; }
       .preview-fill { fill: #111111; stroke: none; fill-rule: evenodd; }
       .preview-hole { fill: #ffffff; stroke: none; fill-rule: evenodd; }
     </style>
@@ -318,11 +308,10 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
 <svg xmlns="http://www.w3.org/2000/svg" width="{base.fmt(svg_w)}mm" height="{base.fmt(svg_h)}mm" viewBox="0 0 {base.fmt(svg_w)} {base.fmt(svg_h)}">
 {style}
   <title>Totem Futebol - {escape(name)} {escape(number)}</title>
-  <desc>Arquivo de corte gerado automaticamente. Vermelho: corte externo. Azul: corte interno. Verde: gravação/opcional.</desc>
+  <desc>Arquivo de corte gerado automaticamente. Vermelho: corte externo. Azul: corte interno.</desc>
 {metadata}
   {''.join(preview)}
   <g id="CORTE_CORPO" transform="translate({base.fmt(x_offset)} {base.fmt(y_offset)}) scale({base.fmt(s)})"><path class="cut-external" d="{player_d}" /></g>
-  <g id="GRAVACAO_OPCIONAL">{_shorts_line(x_offset, y_offset, s)}</g>
   {''.join(cut_internal)}
   {''.join(base_cut)}
 </svg>
