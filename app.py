@@ -5,7 +5,7 @@ from html import escape
 from fastapi import FastAPI, Query, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
-from totemfut import TotemConfig, generate_totem_svg, safe_filename
+from totemfut.v3 import TotemConfig, generate_totem_svg, safe_filename
 
 app = FastAPI(title="TotemFut", version="0.1.0")
 
@@ -53,7 +53,7 @@ def home() -> str:
 <body>
   <div class="card">
     <h1>TotemFut</h1>
-    <p class="small">Gerador de SVG para centro de mesa futebol em MDF 3mm. Vermelho = corte externo, azul = corte interno, verde = gravação opcional.</p>
+    <p class="small">Gerador de SVG para centro de mesa futebol em MDF 3mm. Vermelho = corte externo, azul = corte interno. Preto/branco = prévia.</p>
 
     <label>Nome</label>
     <input id="nome" value="MIGUEL" maxlength="32">
