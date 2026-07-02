@@ -5,6 +5,7 @@ from html import escape
 import re
 
 from . import generator as base
+from .template_loader import Rect, load_base_template, load_player_template
 
 try:
     from .font_renderer import FontTextRenderer
@@ -19,7 +20,7 @@ class TotemConfig:
     slot_clearance_mm: float = 0.25
     base_width_mm: float = 130.0
     base_depth_mm: float = 50.0
-    tab_width_mm: float = 48.0
+    tab_width_mm: float = 50.0
     tab_height_mm: float = 12.0
     max_name_width_mm: float = 44.0
     max_number_width_mm: float = 38.0
@@ -83,27 +84,31 @@ def _break_compound(words: list[str], cfg: TotemConfig, renderer=None) -> list[s
     return candidates[0][2]
 
 
-def _name_layout(name: str, cfg: TotemConfig, renderer=None) -> TextLayout:
+def _name_layout(name: str, zone: Rect, cfg: TotemConfig, renderer=None) -> TextLayout:
     warnings: list[str] = []
     if not name:
         name = "NOME"
         warnings.append("Nome vazio; usei NOME como exemplo.")
+
     words = name.split()
+    max_width = zone.width * 0.96
+
     if len(words) > 1:
         lines = _break_compound(words, cfg, renderer)
-        height, fit_warnings = _fit_height(
-            lines,
-            cfg.desired_compound_line_height_mm,
-            cfg.min_name_height_mm,
-            cfg.max_name_width_mm,
-            cfg,
-            renderer,
-        )
+        desired = min(cfg.desired_compound_line_height_mm, zone.height * 0.42)
+        minimum = min(cfg.min_name_height_mm, max(3.8, zone.height * 0.33))
+        line_height, fit_warnings = _fit_height(lines, desired, minimum, max_width, cfg, renderer)
+        total_height = line_height * len(lines) + 1.6 * (len(lines) - 1)
+        if total_height > zone.height * 0.92:
+            line_height = (zone.height * 0.92 - 1.6 * (len(lines) - 1)) / len(lines)
         warnings.extend(fit_warnings)
-        return TextLayout(lines, height, warnings)
-    height, fit_warnings = _fit_height([name], cfg.desired_name_height_mm, cfg.min_name_height_mm, cfg.max_name_width_mm, cfg, renderer)
+        return TextLayout(lines, line_height, warnings)
+
+    desired = min(cfg.desired_name_height_mm, zone.height * 0.76)
+    minimum = min(cfg.min_name_height_mm, max(4.0, zone.height * 0.45))
+    line_height, fit_warnings = _fit_height([name], desired, minimum, max_width, cfg, renderer)
     warnings.extend(fit_warnings)
-    return TextLayout([name], height, warnings)
+    return TextLayout([name], line_height, warnings)
 
 
 def _renderer(cfg: TotemConfig, name: str, number: str):
@@ -127,99 +132,53 @@ def _render_text(text: str, x: float, y: float, height: float, cfg: TotemConfig,
     return base.render_grid_text(text, x, y, height, cfg, klass)
 
 
-def _player_outline_d(cfg: TotemConfig) -> str:
-    tab_h = cfg.tab_height_mm
-    tab_w = cfg.tab_width_mm
-    tab_left = 70.0 - tab_w / 2.0
-    tab_right = 70.0 + tab_w / 2.0
-    tab_bottom = 204.0 + tab_h
-
-    d = f"""
-    M 70 4
-    C 58 4 53 15 55 30
-    C 56 42 62 49 66 52
-    C 67 54 67 56 64 57
-    C 51 60 42 68 36 82
-    L 29 74
-    C 23 67 16 67 11 74
-    C 6 82 3 93 3 101
-    C 3 109 11 114 18 109
-    L 29 101
-    C 36 112 45 111 51 99
-    L 53 91
-    L 52 123
-    L 43 151
-    L 37 181
-    L 25 190
-    C 16 197 21 206 32 206
-    L 48 206
-    C 55 206 58 202 59 196
-    L 64 163
-    L 67 140
-    L {tab_left:.3f} 204
-    L {tab_left:.3f} {tab_bottom:.3f}
-    L {tab_right:.3f} {tab_bottom:.3f}
-    L {tab_right:.3f} 204
-    L 73 140
-    L 76 163
-    L 81 196
-    C 82 202 85 206 92 206
-    L 108 206
-    C 119 206 124 197 115 190
-    L 103 181
-    L 97 151
-    L 88 123
-    L 87 91
-    L 89 99
-    C 95 111 104 112 111 101
-    L 122 109
-    C 129 114 137 109 137 101
-    C 137 93 134 82 129 74
-    C 124 67 117 67 111 74
-    L 104 82
-    C 98 68 89 60 76 57
-    C 73 56 73 54 74 52
-    C 78 49 84 42 85 30
-    C 87 15 82 4 70 4
-    Z
-    """
-    return " ".join(d.split())
+def _transform(tx: float, ty: float, scale: float, origin: Rect) -> str:
+    return (
+        f"translate({base.fmt(tx)} {base.fmt(ty)}) "
+        f"scale({base.fmt(scale)}) "
+        f"translate({base.fmt(-origin.x)} {base.fmt(-origin.y)})"
+    )
 
 
-def _base_elements(cfg: TotemConfig, x: float, y: float, outer: str, inner: str) -> list[str]:
-    slot_w = cfg.tab_width_mm + cfg.slot_clearance_mm
+def _template_paths(tx: float, ty: float, scale: float, origin: Rect) -> tuple[list[str], list[str]]:
+    template = load_player_template()
+    transform = _transform(tx, ty, scale, origin)
+
+    preview = [
+        f'<path class="preview-fill" d="{template.outer.d}" transform="{transform}" />'
+    ]
+    cut = [
+        f'<path class="cut-external" d="{template.outer.d}" transform="{transform}" />'
+    ]
+
+    for shape in template.internal_paths:
+        preview.append(f'<path class="preview-hole" d="{shape.d}" transform="{transform}" />')
+        cut.append(f'<path class="cut-internal" d="{shape.d}" transform="{transform}" />')
+
+    return preview, cut
+
+
+def _base_elements(base_x: float, base_y: float, cfg: TotemConfig) -> tuple[list[str], list[str], float]:
+    template = load_base_template()
+    scale = cfg.base_width_mm / template.outer.width
+    base_h = template.outer.height * scale
+
+    # A largura do rasgo vem do desenho; a altura vem do MDF real.
+    slot_ratio = template.slot.width / template.outer.width
+    slot_w = max(cfg.tab_width_mm + cfg.slot_clearance_mm, cfg.base_width_mm * slot_ratio)
     slot_h = cfg.material_thickness_mm + cfg.slot_clearance_mm
-    slot_x = x + (cfg.base_width_mm - slot_w) / 2.0
-    slot_y = y + (cfg.base_depth_mm - slot_h) / 2.0
-    return [
-        base.rect_element(x, y, cfg.base_width_mm, cfg.base_depth_mm, outer),
-        base.rect_element(slot_x, slot_y, slot_w, slot_h, inner),
+    slot_x = base_x + (cfg.base_width_mm - slot_w) / 2.0
+    slot_y = base_y + (base_h - slot_h) / 2.0
+
+    preview = [
+        base.rect_element(base_x, base_y, cfg.base_width_mm, base_h, "preview-fill"),
+        base.rect_element(slot_x, slot_y, slot_w, slot_h, "preview-hole"),
     ]
-
-
-def _ball(cx: float, cy: float, r: float, klass: str) -> list[str]:
-    holes = [
-        (cx, cy, r * 0.18),
-        (cx - r * 0.45, cy - r * 0.35, r * 0.14),
-        (cx + r * 0.45, cy - r * 0.35, r * 0.14),
-        (cx - r * 0.38, cy + r * 0.32, r * 0.14),
-        (cx + r * 0.38, cy + r * 0.32, r * 0.14),
+    cut = [
+        base.rect_element(base_x, base_y, cfg.base_width_mm, base_h, "cut-external"),
+        base.rect_element(slot_x, slot_y, slot_w, slot_h, "cut-internal"),
     ]
-    return [
-        f'<circle class="{klass}" cx="{base.fmt(x)}" cy="{base.fmt(y)}" r="{base.fmt(hr)}" />'
-        for x, y, hr in holes
-    ]
-
-
-def _leg_gap(cx: float, y: float, s: float, klass: str) -> str:
-    d = f"""
-    M {base.fmt(cx - 4.6*s)} {base.fmt(y + 136*s)}
-    C {base.fmt(cx - 7.0*s)} {base.fmt(y + 154*s)} {base.fmt(cx - 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx - 5.0*s)} {base.fmt(y + 194*s)}
-    C {base.fmt(cx - 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 2.2*s)} {base.fmt(y + 196*s)} {base.fmt(cx + 5.0*s)} {base.fmt(y + 194*s)}
-    C {base.fmt(cx + 7.0*s)} {base.fmt(y + 176*s)} {base.fmt(cx + 7.0*s)} {base.fmt(y + 154*s)} {base.fmt(cx + 4.6*s)} {base.fmt(y + 136*s)}
-    Z
-    """
-    return f'<path class="{klass}" d="{" ".join(d.split())}" />'
+    return preview, cut, base_h
 
 
 def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -> GeneratedTotem:
@@ -227,6 +186,31 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
     name = base.normalize_text(nome)
     number = re.sub(r"[^0-9]", "", base.normalize_text(numero))[:2] or "10"
     renderer = _renderer(cfg, name, number)
+
+    player = load_player_template()
+    player_scale = cfg.visible_height_mm / player.bbox.height
+    player_w = player.bbox.width * player_scale
+    margin = 8.0
+
+    base_preview: list[str] = []
+    base_cut: list[str] = []
+    base_h = 0.0
+    base_gap = 10.0 if cfg.include_base else 0.0
+    if cfg.include_base:
+        _, _, base_h = _base_elements(0, 0, cfg)
+
+    svg_w = max(player_w, cfg.base_width_mm) + margin * 2.0
+    svg_h = cfg.visible_height_mm + base_gap + base_h + margin * 2.0
+    player_x = (svg_w - player_w) / 2.0
+    player_y = margin
+
+    name_zone = player.name_zone.transformed(player_x, player_y, player_scale, player.bbox)
+    number_zone = Rect(
+        name_zone.x + name_zone.width * 0.18,
+        name_zone.y2 + max(3.0, name_zone.height * 0.30),
+        name_zone.width * 0.64,
+        cfg.visible_height_mm * 0.22,
+    )
 
     warnings: list[str] = []
     if renderer is not None:
@@ -237,51 +221,45 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
             warnings.append("Caracteres com miolo tratados pela fonte modular TotemStencil: " + ", ".join(dangerous))
         warnings.append("Fonte STENCIL.TTF não encontrada; usei a fonte modular segura da V1.")
 
-    layout = _name_layout(name, cfg, renderer)
+    layout = _name_layout(name, name_zone, cfg, renderer)
     warnings.extend(layout.warnings)
-    number_height, number_warnings = _fit_height([number], cfg.desired_number_height_mm, cfg.min_number_height_mm, cfg.max_number_width_mm, cfg, renderer)
+    number_height, number_warnings = _fit_height(
+        [number],
+        min(cfg.desired_number_height_mm, number_zone.height * 0.88),
+        cfg.min_number_height_mm,
+        number_zone.width,
+        cfg,
+        renderer,
+    )
     warnings.extend(number_warnings)
 
-    s = cfg.visible_height_mm / 200.0
-    player_w = 140.0 * s
-    svg_w = max(player_w, cfg.base_width_mm) + 20.0
-    svg_h = cfg.visible_height_mm + cfg.tab_height_mm + 8.0 + (cfg.base_depth_mm + 18.0 if cfg.include_base else 10.0)
-    x_offset = (svg_w - player_w) / 2.0
-    y_offset = 0.0
-    torso_x = x_offset + 70.0 * s
-    name_y = y_offset + (70.0 if len(layout.lines) == 2 else 74.0) * s
-    number_y = y_offset + 94.0 * s
+    template_preview, template_cut = _template_paths(player_x, player_y, player_scale, player.bbox)
 
-    cut_internal = ['<g id="CORTE_INTERNO_TEXTO_E_DETALHES">']
-    preview_holes = ['<g id="PREVIEW_FUROS">']
-    y = name_y
-    for line in layout.lines:
-        cut_internal.extend(_render_text(line, torso_x, y, layout.line_height_mm, cfg, "cut-internal", renderer))
-        preview_holes.extend(_render_text(line, torso_x, y, layout.line_height_mm, cfg, "preview-hole", renderer))
-        y += layout.line_height_mm + 2.0
-    cut_internal.extend(_render_text(number, torso_x, number_y, number_height, cfg, "cut-internal", renderer))
-    preview_holes.extend(_render_text(number, torso_x, number_y, number_height, cfg, "preview-hole", renderer))
-    cut_internal.append(_leg_gap(torso_x, y_offset, s, "cut-internal"))
-    preview_holes.append(_leg_gap(torso_x, y_offset, s, "preview-hole"))
-    cut_internal.extend(_ball(torso_x, y_offset + 188.0 * s, 8.5 * s, "cut-internal"))
-    preview_holes.extend(_ball(torso_x, y_offset + 188.0 * s, 8.5 * s, "preview-hole"))
-    cut_internal.append("</g>")
-    preview_holes.append("</g>")
-
-    base_cut: list[str] = []
-    base_preview: list[str] = []
     if cfg.include_base:
-        bx = (svg_w - cfg.base_width_mm) / 2.0
-        by = cfg.visible_height_mm + cfg.tab_height_mm + 14.0
-        base_cut = ['<g id="CORTE_BASE">', *_base_elements(cfg, bx, by, "cut-external", "cut-internal"), "</g>"]
-        base_preview = ['<g id="PREVIEW_BASE">', *_base_elements(cfg, bx, by, "preview-fill", "preview-hole"), "</g>"]
+        base_x = (svg_w - cfg.base_width_mm) / 2.0
+        base_y = margin + cfg.visible_height_mm + base_gap
+        base_preview, base_cut, _base_h = _base_elements(base_x, base_y, cfg)
 
-    player_d = _player_outline_d(cfg)
+    text_cut = ['<g id="CORTE_INTERNO_TEXTO">']
+    text_preview = ['<g id="PREVIEW_TEXTO">']
+    total_name_h = layout.line_height_mm * len(layout.lines) + 1.6 * (len(layout.lines) - 1)
+    y = name_zone.y + (name_zone.height - total_name_h) / 2.0
+    for line in layout.lines:
+        text_cut.extend(_render_text(line, name_zone.cx, y, layout.line_height_mm, cfg, "cut-internal", renderer))
+        text_preview.extend(_render_text(line, name_zone.cx, y, layout.line_height_mm, cfg, "preview-hole", renderer))
+        y += layout.line_height_mm + 1.6
+
+    number_y = number_zone.y + (number_zone.height - number_height) / 2.0
+    text_cut.extend(_render_text(number, number_zone.cx, number_y, number_height, cfg, "cut-internal", renderer))
+    text_preview.extend(_render_text(number, number_zone.cx, number_y, number_height, cfg, "preview-hole", renderer))
+    text_cut.append("</g>")
+    text_preview.append("</g>")
+
     preview = [
         '<g id="PREVIEW_PRODUTO">',
-        f'<path class="preview-fill" d="{player_d}" transform="translate({base.fmt(x_offset)} {base.fmt(y_offset)}) scale({base.fmt(s)})" />',
+        *template_preview,
         *base_preview,
-        *preview_holes,
+        *text_preview,
         "</g>",
     ] if cfg.include_preview else []
 
@@ -297,9 +275,10 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
         f"    <!-- {escape(line)} -->" for line in [
             f"Nome normalizado: {name}",
             f"Numero normalizado: {number}",
-            f"Altura visivel: {cfg.visible_height_mm} mm",
+            f"Altura visivel do corpo: {cfg.visible_height_mm} mm",
             f"MDF: {cfg.material_thickness_mm} mm",
             f"Folga do encaixe: {cfg.slot_clearance_mm} mm",
+            f"Zona do nome vem do retangulo guia do CORPO.svg",
             f"Linhas do nome: {' / '.join(layout.lines)}",
             *warnings,
         ]
@@ -308,12 +287,12 @@ def generate_totem_svg(nome: str, numero: str, cfg: TotemConfig | None = None) -
 <svg xmlns="http://www.w3.org/2000/svg" width="{base.fmt(svg_w)}mm" height="{base.fmt(svg_h)}mm" viewBox="0 0 {base.fmt(svg_w)} {base.fmt(svg_h)}">
 {style}
   <title>Totem Futebol - {escape(name)} {escape(number)}</title>
-  <desc>Arquivo de corte gerado automaticamente. Vermelho: corte externo. Azul: corte interno.</desc>
+  <desc>Arquivo de corte gerado automaticamente usando assets/CORPO.svg e assets/SVG_BASE.svg.</desc>
 {metadata}
   {''.join(preview)}
-  <g id="CORTE_CORPO" transform="translate({base.fmt(x_offset)} {base.fmt(y_offset)}) scale({base.fmt(s)})"><path class="cut-external" d="{player_d}" /></g>
-  {''.join(cut_internal)}
-  {''.join(base_cut)}
+  <g id="CORTE_CORPO">{''.join(template_cut)}</g>
+  {''.join(text_cut)}
+  <g id="CORTE_BASE">{''.join(base_cut)}</g>
 </svg>
 """
     return GeneratedTotem(svg=svg, normalized_name=name, normalized_number=number, name_lines=layout.lines, warnings=warnings)
