@@ -5,7 +5,7 @@ from html import escape
 from fastapi import FastAPI, Query, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
-from totemfut.v3 import TotemConfig, generate_totem_svg, safe_filename
+from totemfut.v5 import TotemConfig, generate_totem_svg, safe_filename
 
 app = FastAPI(title="TotemFut", version="0.1.0")
 
